@@ -147,7 +147,7 @@ with st.form("production_request_form"):
 import google.generativeai as genai
 
 # Configure your Gemini API key (from secrets.toml or environment)
-genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+genai.configure(api_key="AIzaSyCv9nfIKQu-WzvKtxLuqmaTs3WI_eeH7DI")
 
 model = genai.GenerativeModel("gemini-1.5-flash")  # Adjust model name as needed
 
