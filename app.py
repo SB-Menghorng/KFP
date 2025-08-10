@@ -11,7 +11,7 @@ with st.sidebar:
             "icon": {"color": "blue", "font-size": "18px"},
             "nav-link": {"font-size": "14px", "text-align": "center", "margin": "0px"},
             "nav-link-selected": {"background-color": "#02ab21"},
-        }
+        },
     )
 if options == "Production":
     selected = option_menu(
@@ -26,13 +26,17 @@ if options == "Production":
             "icon": {"color": "blue", "font-size": "18px"},
             "nav-link": {"font-size": "14px", "text-align": "center", "margin": "0px"},
             "nav-link-selected": {"background-color": "#02ab21"},
-        }
+        },
     )
 
-    st.set_page_config(page_title="KFP", layout="wide")
-
     if selected == "Request Form":
-        st.set_page_config(page_title="KFP", layout="centered", initial_sidebar_state="auto")
+        st.set_page_config(
+            page_title="KFP", layout="centered", initial_sidebar_state="auto"
+        )
         request_form()
     elif selected == "Reports":
+        st.set_page_config(
+            page_title="KFP", layout="wide", initial_sidebar_state="auto"
+        )
+
         dashboard()
