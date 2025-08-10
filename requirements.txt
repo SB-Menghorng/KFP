@@ -3,3 +3,7 @@ oauth2client
 streamlit_chat
 streamlit_option_menu
 google-generativeai  
+streamlit-autocomplete
+plotly
+matplotlib
+seaborn
