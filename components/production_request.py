@@ -336,9 +336,14 @@ def request_form():
                                     📞 *{safe_label(questions(8), 'Contact')}:* {contact}
                                     """
 
-                # send_to_telegram = send_telegram_message(
-                #     chat_ids=get_list(
-                #         df, 10
-                #     ),  # Assuming chat IDs are in the 10th column
-                #     message=telegram_message,
-                # )
+                send_to_telegram = send_telegram_message(
+                    chat_ids=get_list(
+                        df, 10
+                    ),  # Assuming chat IDs are in the 10th column
+                    message=telegram_message,
+                )
+
+                if send_to_telegram:
+                    st.success("Telegram message sent successfully!")
+                else:
+                    st.error("Failed to send Telegram message.")
