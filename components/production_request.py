@@ -255,7 +255,7 @@ def request_form():
                 }
 
                 try:
-                    st.json(data)
+                    # st.json(data)
                     write_to_sheet = append_to_sheetdb(data)
                     st.write(write_to_sheet)
                 except Exception as e:
@@ -301,11 +301,11 @@ def request_form():
                                 <td style="padding: 8px;">{amount} {unit}</td>
                             </tr>
                             <tr style="background-color: #e8f5e9;">
-                                <td style="padding: 8px; font-weight: 600;">{safe_label(questions(5), 'Room')}</td>
+                                <td style="padding: 8px; font-weight: 600;">{safe_label(questions(6), 'Room')}</td>
                                 <td style="padding: 8px;">{room}</td>
                             </tr>
                             <tr>
-                                <td style="padding: 8px; font-weight: 600;">{safe_label(questions(6), 'Building')}</td>
+                                <td style="padding: 8px; font-weight: 600;">{safe_label(questions(7), 'Building')}</td>
                                 <td style="padding: 8px;">{building}</td>
                             </tr>
                             <tr style="background-color: #e8f5e9;">
