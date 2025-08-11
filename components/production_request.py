@@ -330,10 +330,10 @@ def request_form():
                                     📚 *{safe_label(questions(2), 'Topic')}:* {selected_topic}
                                     📝 *{safe_label(questions(3), 'Description')}:* {description if description.strip() else '—'}
                                     🔢 *{safe_label(questions(4), 'Amount')}:* {amount} {unit}
-                                    🚪 *{safe_label(questions(5), 'Room')}:* {room}
-                                    🏢 *{safe_label(questions(6), 'Building')}:* {building}
-                                    📍 *{safe_label(questions(7), 'Zoon')}:* {zoon}
-                                    📞 *{safe_label(questions(8), 'Contact')}:* {contact}
+                                    🚪 *{safe_label(questions(6), 'Room')}:* {room}
+                                    🏢 *{safe_label(questions(7), 'Building')}:* {building}
+                                    📍 *{safe_label(questions(8), 'Zoon')}:* {zoon}
+                                    📞 *{safe_label(questions(9), 'Contact')}:* {contact}
                                     """
 
                 send_to_telegram = send_telegram_message(
@@ -347,3 +347,5 @@ def request_form():
                     st.success("Telegram message sent successfully!")
                 else:
                     st.error("Failed to send Telegram message.")
+
+    # st.dataframe(pd.DataFrame({"Column Name": df.columns}))
