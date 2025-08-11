@@ -323,18 +323,18 @@ def request_form():
 
                 st.markdown(receipt_html, unsafe_allow_html=True)
 
-                telegram_message = f"""
-                                    📄 *Submission Receipt*
-                                    👤 *{safe_label(questions(0), 'Name')}:* {username}
-                                    🧑‍💼 *{safe_label(questions(1), 'Assigned To')}:* {assigned_to}
-                                    📚 *{safe_label(questions(2), 'Topic')}:* {selected_topic}
-                                    📝 *{safe_label(questions(3), 'Description')}:* {description if description.strip() else '—'}
-                                    🔢 *{safe_label(questions(4), 'Amount')}:* {amount} {unit}
-                                    🚪 *{safe_label(questions(6), 'Room')}:* {room}
-                                    🏢 *{safe_label(questions(7), 'Building')}:* {building}
-                                    📍 *{safe_label(questions(8), 'Zoon')}:* {zoon}
-                                    📞 *{safe_label(questions(9), 'Contact')}:* {contact}
-                                    """
+                telegram_message = (
+                    f"📄 *Submission Receipt*\n"
+                    f"👤 *{safe_label(questions(0), 'Name')}:* {username}\n"
+                    f"🧑‍💼 *{safe_label(questions(1), 'Assigned To')}:* {assigned_to}\n"
+                    f"📚 *{safe_label(questions(2), 'Topic')}:* {selected_topic}\n"
+                    f"📝 *{safe_label(questions(3), 'Description')}:* {description if description.strip() else '—'}\n"
+                    f"🔢 *{safe_label(questions(4), 'Amount')}:* {amount} {unit}\n"
+                    f"🚪 *{safe_label(questions(6), 'Room')}:* {room}\n"
+                    f"🏢 *{safe_label(questions(7), 'Building')}:* {building}\n"
+                    f"📍 *{safe_label(questions(8), 'Zoon')}:* {zoon}\n"
+                    f"📞 *{safe_label(questions(9), 'Contact')}:* {contact}"
+                )
 
                 send_to_telegram = send_telegram_message(
                     chat_ids=get_list(
