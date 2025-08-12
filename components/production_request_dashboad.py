@@ -1,15 +1,44 @@
 import pandas as pd
 import plotly.express as px
+import requests
 import streamlit as st
 
 from .production_request import data_loader, safe_label
 
+@st.cache_data
+def read_sheedb_to_df() -> pd.DataFrame:
+    """
+    Fetch data from shee.db API endpoint and return it as a pandas DataFrame.
+
+    Args:
+        api_url (str): The full URL to the shee.db API endpoint.
+
+    Returns:
+        pd.DataFrame: DataFrame containing the data from the API.
+    """
+    api_url = st.secrets.get("SHEETDB_API_URL")
+    response = requests.get(api_url)
+    response.raise_for_status()  # raise error if request failed
+
+    data_json = response.json()
+    
+    # shee.db API typically returns data in a 'results' or 'data' key, 
+    # but you should adjust this based on the actual response structure
+    # For example:
+    # data = data_json.get('results') or data_json.get('data') or data_json
+
+    # Example assuming data is directly the list of dicts
+    data = data_json
+    
+    df = pd.DataFrame(data)
+    return df
 
 def dashboard():
     st.header("📊 Production Request Dashboard", divider="green")
 
     # Load stored data
-    df = data_loader(is_stored=True)
+    # df = data_loader(is_stored=True)
+    df = read_sheedb_to_df()
 
     if df.empty:
         st.warning("No data available for dashboard.")
