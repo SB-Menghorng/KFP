@@ -5,7 +5,6 @@ import streamlit as st
 
 from .production_request import data_loader, safe_label
 
-@st.cache_data
 def read_sheedb_to_df() -> pd.DataFrame:
     """
     Fetch data from shee.db API endpoint and return it as a pandas DataFrame.
