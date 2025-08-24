@@ -4,8 +4,9 @@ import pandas as pd
 import requests
 import streamlit as st
 from streamlit_option_menu import option_menu
+from databases.production_request_form import ProductionRequestFormDB
 
-
+db = ProductionRequestFormDB(range_name="A:O")
 def append_to_sheetdb(data_dict):
     """
     Append a new row to the SheetDB.io sheet via API.
@@ -256,7 +257,7 @@ def request_form():
 
                 try:
                     # st.json(data)
-                    write_to_sheet = append_to_sheetdb(data)
+                    write_to_sheet = db.append_row(data)
                     st.write(write_to_sheet)
                 except Exception as e:
                     st.error(f"Failed to write data to sheet: {e}")
@@ -336,16 +337,16 @@ def request_form():
                     f"📞 *{safe_label(questions(9), 'Contact')}:* {contact}"
                 )
 
-                send_to_telegram = send_telegram_message(
-                    chat_ids=get_list(
-                        df, 10
-                    ),  # Assuming chat IDs are in the 10th column
-                    message=telegram_message,
-                )
+                # send_to_telegram = send_telegram_message(
+                #     chat_ids=get_list(
+                #         df, 10
+                #     ),  # Assuming chat IDs are in the 10th column
+                #     message=telegram_message,
+                # )
 
-                if send_to_telegram:
-                    st.success("Telegram message sent successfully!")
-                else:
-                    st.error("Failed to send Telegram message.")
+                # if send_to_telegram:
+                #     st.success("Telegram message sent successfully!")
+                # else:
+                #     st.error("Failed to send Telegram message.")
 
     # st.dataframe(pd.DataFrame({"Column Name": df.columns}))
