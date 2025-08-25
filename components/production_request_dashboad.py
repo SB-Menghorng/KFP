@@ -3,34 +3,14 @@ import plotly.express as px
 import requests
 import streamlit as st
 
-from .production_request import data_loader, safe_label
+from .production_request import data_loader, get_form_questions, db
 
 def read_sheedb_to_df() -> pd.DataFrame:
     """
     Fetch data from shee.db API endpoint and return it as a pandas DataFrame.
-
-    Args:
-        api_url (str): The full URL to the shee.db API endpoint.
-
-    Returns:
-        pd.DataFrame: DataFrame containing the data from the API.
+    Falls back to data_loader if API URL is not set or request fails.
     """
-    api_url = st.secrets.get("SHEETDB_API_URL")
-    response = requests.get(api_url)
-    response.raise_for_status()  # raise error if request failed
-
-    data_json = response.json()
-    
-    # shee.db API typically returns data in a 'results' or 'data' key, 
-    # but you should adjust this based on the actual response structure
-    # For example:
-    # data = data_json.get('results') or data_json.get('data') or data_json
-
-    # Example assuming data is directly the list of dicts
-    data = data_json
-    
-    df = pd.DataFrame(data)
-    return df
+    return db.get_df()
 
 def dashboard():
     st.header("📊 Production Request Dashboard", divider="green")
@@ -38,19 +18,20 @@ def dashboard():
     # Load stored data
     # df = data_loader(is_stored=True)
     df = read_sheedb_to_df()
+    questions = lambda index: get_form_questions(df, index)
 
     if df.empty:
         st.warning("No data available for dashboard.")
         return
 
     # Assuming column names match your Google Sheet
-    name_col = "Your Name/ឈ្មោះអ្នកស្នើ"
-    type_col = "ប្រភេទសំណើរ/Request type"
-    room_col = "បន្ទប់/room"
-    building_col = "អគា/building"
-    zoon_col = "តំបន់/zoon"
-    date_col = "Request Date"
-    team_col = "ក្រុម/team"
+    name_col =  questions(0)  # "ឈ្មោះ/Name"
+    type_col =  questions(1)  # "ប្រភេទសំណើរ/Request type"
+    room_col =  questions(2)  # "បន្ទប់/room"
+    building_col =  questions(3)  # "អគា/building"
+    zoon_col =  questions(4)  # "តំបន់/zoon"
+    date_col =  questions(13)  # "Request Date"
+    team_col =  questions(6)  # "ក្រុម/team"
 
     # Convert date column to datetime
     df[date_col] = pd.to_datetime(df[date_col], errors="coerce")
@@ -59,8 +40,11 @@ def dashboard():
     col1, col2, col3 = st.columns(3)
     col1.metric("📌 Total Requests", df.shape[0])
     col2.metric("👤 Unique Users", df[name_col].nunique())
-    busiest_date = df[date_col].value_counts().idxmax().strftime("%Y-%m-%d")
-    col3.metric("📅 Busiest Date", busiest_date)
+    try:
+        busiest_date = df[date_col].value_counts().idxmax().strftime("%Y-%m-%d")
+        col3.metric("📅 Busiest Date", busiest_date)
+    except ValueError:
+        col3.metric("📅 Busiest Date", "N/A")
 
     st.divider()
     col1, col2, col3 = st.columns(3)
@@ -113,6 +97,7 @@ def dashboard():
 
     if show_data:
         st.dataframe(df, use_container_width=True)
-
+    
+    st.dataframe(pd.DataFrame({"Column Name": df.columns}))
 
 

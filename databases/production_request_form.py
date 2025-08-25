@@ -1,5 +1,7 @@
 from utils.google_sheets_client import GoogleSheetsClient
 import streamlit as st
+import pandas as pd
+import pandas as pd
 
 
 class ProductionRequestFormDB:
@@ -18,7 +20,7 @@ class ProductionRequestFormDB:
     def _get_headers(self):
         """Fetch headers from the first row of the sheet."""
         try:
-            sheet_values = self.google_client.service.spreadsheets().values().get(
+            sheet_values = self.google_client.sheets_service.spreadsheets().values().get(
                 spreadsheetId=self.sheet_id,
                 range=self.ranges  # First row
             ).execute()
@@ -51,20 +53,20 @@ class ProductionRequestFormDB:
             st.error(f"Failed to append row: {e}")
             return None
 
-    def get_all_rows(self):
-        """Fetch all rows as a list of dicts (header: value)."""
+    def get_df(self):
+        """Fetch all rows as a pandas DataFrame."""
         try:
-            result = self.google_client.service.spreadsheets().values().get(
+            result = self.google_client.sheets_service.spreadsheets().values().get(
                 spreadsheetId=self.sheet_id,
-                range="Sheet1"
+                range=self.ranges
             ).execute()
             values = result.get("values", [])
             if not values:
-                return []
+                return pd.DataFrame()
 
             headers = values[0]
             data_rows = values[1:]
-            return [dict(zip(headers, row)) for row in data_rows]
+            return pd.DataFrame(data_rows, columns=headers)
         except Exception as e:
             st.error(f"Failed to get rows: {e}")
-            return []
+            return pd.DataFrame()

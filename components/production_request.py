@@ -6,7 +6,8 @@ import streamlit as st
 from streamlit_option_menu import option_menu
 from databases.production_request_form import ProductionRequestFormDB
 
-db = ProductionRequestFormDB(range_name="A:O")
+db = ProductionRequestFormDB(range_name="A:P")
+
 def append_to_sheetdb(data_dict):
     """
     Append a new row to the SheetDB.io sheet via API.
@@ -83,7 +84,7 @@ def data_loader(is_stored: bool = False) -> pd.DataFrame:
 
     # 2. Try reading the file, catch errors
     try:
-        df = pd.read_csv(url)
+        df = db.get_df()
     except Exception as e:
         st.error(f"❌ Failed to read spreadsheet from URL: {e}")
         st.stop()
@@ -178,6 +179,11 @@ def request_form():
             )
         with col2:
             unit = st.selectbox(safe_label(questions(5), "Unit *"), get_list(df, 5))
+            
+        image = st.file_uploader(
+            safe_label(questions(-1), "Upload Image"), 
+            type=["jpg", "jpeg", "png"]
+        )
 
         col1, col2, col3 = st.columns(3, border=True)
 
