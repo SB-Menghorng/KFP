@@ -6,7 +6,10 @@ import requests
 import streamlit as st
 from streamlit_option_menu import option_menu
 
-from databases.production_request_form import ProductionRequestFormDB
+from databases.production_request_form import (
+    GoogleSheetsClient,
+    ProductionRequestFormDB,
+)
 
 
 class ProductionRequestForm:
@@ -14,15 +17,20 @@ class ProductionRequestForm:
 
     def __init__(self):
         # Initialize DB connections
+        self.db_read = st.secrets["SPREADSHEET_PRODUCTION_REQUEST_FORM_READ"]
+        self.db_write = st.secrets["SPREADSHEET_PRODUCTION_REQUEST_FORM_STORED"]
         self.db_stored = ProductionRequestFormDB(
             range_name="A:P",
-            spreadsheet=st.secrets["SPREADSHEET_PRODUCTION_REQUEST_FORM_STORED"],
+            spreadsheet=self.db_write,
         )
         self.db_read = ProductionRequestFormDB(
             range_name="A:Q",
-            spreadsheet=st.secrets["SPREADSHEET_PRODUCTION_REQUEST_FORM_READ"],
+            spreadsheet=self.db_read,
         )
-
+        
+        self.google = GoogleSheetsClient(
+            service_account=False, spreadsheet_url=st.secrets["SPREADSHEET_PRODUCTION_REQUEST_FORM_READ"], token_range="R:R1"
+        )
     # ------------------ Google Sheets / SheetDB ------------------ #
     @staticmethod
     def append_to_sheetdb(data_dict: dict) -> Optional[requests.Response]:
@@ -260,16 +268,13 @@ class ProductionRequestForm:
         st.success("Form submitted successfully!")
 
         # --- Handle image ---
-        image_url = "—"
+        image_url = None
         if image is not None:
             try:
-                # Example: Save image locally
-                save_path = f"uploads/{username}_{image.name}"
-                with open(save_path, "wb") as f:
-                    f.write(image.getbuffer())
-                image_url = save_path  # Or you could upload to cloud and use URL
+                image_url = self.google.upload_image_to_drive(image, "1XdvQyIrybBvIEeGejR1A5M8o4UmcA7Rb")
             except Exception as e:
                 st.warning(f"Failed to save image: {e}")
+                image_url = None
 
         # --- Prepare data for Google Sheet ---
         data = {

@@ -8,6 +8,11 @@ from components.production_request_dashboad import ProductionDashboard
 prod_form = ProductionRequestForm()
 prod_dashboard = ProductionDashboard()
 
+st.set_page_config(
+    page_title="Factory Dashboard",  # This changes the browser tab title
+    page_icon="🏭",                 # Optional: emoji or path to an image
+)
+
 # ------------------ Sidebar ------------------ #
 with st.sidebar:
     st.image(
