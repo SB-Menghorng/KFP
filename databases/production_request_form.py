@@ -1,6 +1,5 @@
 import pandas as pd
 import streamlit as st
-
 from utils.google_sheets_client import GoogleSheetsClient
 
 
@@ -29,7 +28,7 @@ class ProductionRequestFormDB:
             st.error(f"Failed to get headers: {e}")
             return []
 
-    def append_row(self, data: dict):
+    def append_row(self, data: dict, questions):
         """
         Append a new row to the production request form.
         Maps dict keys to sheet headers.
@@ -39,8 +38,7 @@ class ProductionRequestFormDB:
             return
 
         # Map headers to values from data
-        row = [data.get(header, "") for header in self.headers]
-
+        row = [data.get(questions(header), "") for header in range(len(self.headers))]
         try:
             result = self.google_client.append_values(
                 spreadsheet_id=self.sheet_id,

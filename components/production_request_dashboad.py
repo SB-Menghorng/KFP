@@ -35,7 +35,7 @@ class ProductionDashboard:
         # Convert date column to datetime safely
         date_col = get_form_questions(df, 13)
         if date_col in df.columns:
-            df[date_col] = pd.to_datetime(df[date_col], errors="coerce")
+            df[date_col] = pd.to_datetime(df[date_col], format="%Y-%m-%d", errors="coerce")
         return df
 
     def render_metrics(self):

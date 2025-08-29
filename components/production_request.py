@@ -1,4 +1,5 @@
 from datetime import date
+import json
 from typing import Dict, List, Optional
 
 import pandas as pd
@@ -20,17 +21,14 @@ class ProductionRequestForm:
         self.db_read = st.secrets["SPREADSHEET_PRODUCTION_REQUEST_FORM_READ"]
         self.db_write = st.secrets["SPREADSHEET_PRODUCTION_REQUEST_FORM_STORED"]
         self.db_stored = ProductionRequestFormDB(
-            range_name="A:P",
+            range_name="A:O",
             spreadsheet=self.db_write,
         )
         self.db_read = ProductionRequestFormDB(
             range_name="A:Q",
             spreadsheet=self.db_read,
         )
-        
-        self.google = GoogleSheetsClient(
-            service_account=False, spreadsheet_url=st.secrets["SPREADSHEET_PRODUCTION_REQUEST_FORM_READ"], token_range="R:R1"
-        )
+
     # ------------------ Google Sheets / SheetDB ------------------ #
     @staticmethod
     def append_to_sheetdb(data_dict: dict) -> Optional[requests.Response]:
@@ -54,9 +52,9 @@ class ProductionRequestForm:
 
         return response
 
-    @staticmethod
-    def send_telegram_message(chat_ids: List[str], message: str) -> Dict[str, bool]:
-        """Send a message to multiple Telegram chat IDs."""
+    def send_telegram_message(
+        self, image_file, chat_ids: List[str], message: str
+    ) -> Dict[str, bool]:
         bot_token = st.secrets.get("TELEGRAM_TOKEN")
         url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
         results = {}
@@ -66,10 +64,60 @@ class ProductionRequestForm:
             try:
                 response = requests.post(url, data=payload)
                 results[chat_id] = response.status_code == 200
+
+                # only try to upload if image exists
+                if image_file is not None:
+                    self.upload_image_to_telegram(image_file, chat_id)
+
             except Exception as e:
                 results[chat_id] = False
                 st.error(f"❌ Failed to send message to chat ID {chat_id}: {e}")
         return results
+
+    @staticmethod
+    def upload_image_to_telegram(image_file, chat_id: str) -> str:
+        bot_token = st.secrets["TELEGRAM_TOKEN"]
+        url = f"https://api.telegram.org/bot{bot_token}/sendPhoto"
+
+        # if it's a Streamlit UploadedFile, it behaves like a file-like object
+        files = {"photo": image_file}
+        data = {"chat_id": chat_id}
+
+        try:
+            response = requests.post(url, data=data, files=files)
+            result: dict = response.json()
+
+            if response.status_code == 200 and "photo" in result.get("result", {}):
+                return result["result"]["photo"][-1]["file_id"]
+            else:
+                # st.warning(f"⚠️ Failed to upload image: {result}")
+                return None
+        except Exception as e:
+            st.error(f"❌ Telegram upload error: {e}")
+            return None
+
+    @staticmethod
+    def format_request_message(questions: dict, data: dict) -> str:
+        """Format the request data into a beautiful Telegram message."""
+        lines = []
+        lines.append("📌 *New Request Submitted*")
+        lines.append("")
+        lines.append(f"👤 *{questions(0)}*: {data.get(questions(0), '—')}")
+        lines.append(f"📋 *{questions(1)}*: {data.get(questions(1), '—')}")
+        lines.append(f"🏷️ *{questions(2)}*: {data.get(questions(2), '—')}")
+        lines.append("")
+        lines.append(f"📝 *{questions(3)}*:\n{data.get(questions(3), '—')}")
+        lines.append("")
+        lines.append(f"📦 *{questions(4)}*: {data.get(questions(4), '—')}")
+        lines.append(f"🏠 *{questions(6)}*: {data.get(questions(6), '—')}")
+        lines.append(f"🏢 *{questions(7)}*: {data.get(questions(7), '—')}")
+        lines.append(f"📍 *{questions(8)}*: {data.get(questions(8), '—')}")
+        lines.append(f"📞 *{questions(9)}*: {data.get(questions(9), '—')}")
+        lines.append("")
+        lines.append(f"📅 *{questions(13)}*: {data.get(questions(13), "-")}")
+        lines.append(f"📅 *{questions(14)}*: {data.get(questions(14), '—')}")
+
+        return "\n".join(lines)
 
     # ------------------ Data Loading ------------------ #
     def load_data(self) -> pd.DataFrame:
@@ -231,8 +279,8 @@ class ProductionRequestForm:
         building,
         zoon,
         contact,
-        request_date,
-        to_date,
+        request_date: date,
+        to_date: date,
         image=None,
     ):
         # --- Validate inputs ---
@@ -267,22 +315,13 @@ class ProductionRequestForm:
 
         st.success("Form submitted successfully!")
 
-        # --- Handle image ---
-        image_url = None
-        if image is not None:
-            try:
-                image_url = self.google.upload_image_to_drive(image, "1XdvQyIrybBvIEeGejR1A5M8o4UmcA7Rb")
-            except Exception as e:
-                st.warning(f"Failed to save image: {e}")
-                image_url = None
-
         # --- Prepare data for Google Sheet ---
         data = {
             f"{self.safe_label(questions(0), 'Name')}": username,
             f"{self.safe_label(questions(1), 'Assigned To')}": assigned_to,
             f"{self.safe_label(questions(2), 'Topic')}": selected_topic,
             f"{self.safe_label(questions(3), 'Description')}": (
-                description if description.strip() else "—"
+                description if description else "—"
             ),
             f"{self.safe_label(questions(4), 'Amount')}": f"{amount} {unit}",
             f"{self.safe_label(questions(6), 'Room')}": room,
@@ -295,16 +334,21 @@ class ProductionRequestForm:
             f"{self.safe_label(questions(14), 'To Date')}": to_date.strftime(
                 "%Y-%m-%d"
             ),
-            "Image": image_url,
+            "Image": image,
         }
 
         # --- Append to Google Sheet ---
         try:
-            write_response = self.db_stored.append_row(data)
+            write_response = self.db_stored.append_row(
+                data, lambda x: self.safe_label(questions(x))
+            )
         except Exception as e:
             st.error(f"Failed to write data to sheet: {e}")
 
         # Optional: send Telegram message
         chat_ids = self.get_list(df, 10)
-        message = f"New submission by {username}"
-        self.send_telegram_message(chat_ids, message)
+        message = self.format_request_message(
+            lambda x: self.safe_label(questions(x)), data
+        )
+        file_id = self.send_telegram_message(image, chat_ids, message)
+        st.info(f"file id: {file_id}")
