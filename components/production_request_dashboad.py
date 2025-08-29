@@ -130,10 +130,10 @@ class ProductionDashboard:
         if self.df.empty:
             return
 
-        show_data = st.checkbox("Show Full Data")
-        if show_data:
-            st.dataframe(self.df, use_container_width=True)
-        st.dataframe(pd.DataFrame({"Column Name": self.df.columns}))
+        # show_data = st.checkbox("Show Full Data")
+        # if show_data:
+        #     st.dataframe(self.df, use_container_width=True)
+        # st.dataframe(pd.DataFrame({"Column Name": self.df.columns}))
 
     def render_dashboard(self):
         """Render full dashboard with metrics, charts, and data table."""

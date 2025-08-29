@@ -56,45 +56,40 @@ class ProductionRequestForm:
         self, image_file, chat_ids: List[str], message: str
     ) -> Dict[str, bool]:
         bot_token = st.secrets.get("TELEGRAM_TOKEN")
-        url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        base_url = f"https://api.telegram.org/bot{bot_token}"
         results = {}
 
-        for chat_id in chat_ids:
-            payload = {"chat_id": chat_id, "text": message, "parse_mode": "Markdown"}
-            try:
-                response = requests.post(url, data=payload)
-                results[chat_id] = response.status_code == 200
+        # read file once into memory
+        file_bytes = None
+        if image_file is not None:
+            file_bytes = image_file.read()
+            image_file.seek(0)  # reset pointer so Streamlit can still use it
 
-                # only try to upload if image exists
-                if image_file is not None:
-                    self.upload_image_to_telegram(image_file, chat_id)
+        for chat_id in chat_ids:
+            try:
+                # send text message
+                resp = requests.post(
+                    f"{base_url}/sendMessage",
+                    data={"chat_id": chat_id, "text": message, "parse_mode": "Markdown"},
+                )
+                results[chat_id] = resp.status_code == 200
+
+                # send image if provided
+                if file_bytes:
+                    files = {"photo": ("image.jpg", file_bytes)}
+                    resp_img = requests.post(
+                        f"{base_url}/sendPhoto",
+                        data={"chat_id": chat_id},
+                        files=files,
+                    )
+
+                    results[chat_id] = results[chat_id] and resp_img.status_code == 200
 
             except Exception as e:
                 results[chat_id] = False
                 st.error(f"❌ Failed to send message to chat ID {chat_id}: {e}")
+
         return results
-
-    @staticmethod
-    def upload_image_to_telegram(image_file, chat_id: str) -> str:
-        bot_token = st.secrets["TELEGRAM_TOKEN"]
-        url = f"https://api.telegram.org/bot{bot_token}/sendPhoto"
-
-        # if it's a Streamlit UploadedFile, it behaves like a file-like object
-        files = {"photo": image_file}
-        data = {"chat_id": chat_id}
-
-        try:
-            response = requests.post(url, data=data, files=files)
-            result: dict = response.json()
-
-            if response.status_code == 200 and "photo" in result.get("result", {}):
-                return result["result"]["photo"][-1]["file_id"]
-            else:
-                # st.warning(f"⚠️ Failed to upload image: {result}")
-                return None
-        except Exception as e:
-            st.error(f"❌ Telegram upload error: {e}")
-            return None
 
     @staticmethod
     def format_request_message(questions: dict, data: dict) -> str:
@@ -338,6 +333,7 @@ class ProductionRequestForm:
         }
 
         # --- Append to Google Sheet ---
+        st.json(data)
         try:
             write_response = self.db_stored.append_row(
                 data, lambda x: self.safe_label(questions(x))
