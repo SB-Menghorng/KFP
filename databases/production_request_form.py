@@ -4,7 +4,7 @@ from utils.google_sheets_client import GoogleSheetsClient
 
 
 class ProductionRequestFormDB:
-    def __init__(self, range_name: str, spreadsheet: str):
+    def __init__(self, range_name: str, spreadsheet: str, sheet_name: str = "sheet1"):
         self.google_client = GoogleSheetsClient()
         # Extract spreadsheet ID from Streamlit secrets
         self.sheet_id = self.google_client.extract_spreadsheet_id(spreadsheet)
@@ -12,6 +12,7 @@ class ProductionRequestFormDB:
 
         # Optionally, get headers from the first row
         self.ranges = range_name
+        self.sheet_name = sheet_name
         self.headers = self._get_headers()
 
     def _get_headers(self):
@@ -20,7 +21,7 @@ class ProductionRequestFormDB:
             sheet_values = (
                 self.google_client.sheets_service.spreadsheets()
                 .values()
-                .get(spreadsheetId=self.sheet_id, range=self.ranges)  # First row
+                .get(spreadsheetId=self.sheet_id, range=f"{self.sheet_name}!{self.ranges}")  # First row
                 .execute()
             )
             return sheet_values.get("values", [[]])[0]
@@ -61,7 +62,10 @@ class ProductionRequestFormDB:
             result = (
                 self.google_client.sheets_service.spreadsheets()
                 .values()
-                .get(spreadsheetId=self.sheet_id, range=self.ranges)
+                .get(
+                    spreadsheetId=self.sheet_id,
+                    range=f"{self.sheet_name}!{self.ranges}"
+                )
                 .execute()
             )
 
