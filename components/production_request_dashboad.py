@@ -92,6 +92,17 @@ class ProductionDashboard:
 
         # Ensure datetime
         df[date_col] = pd.to_datetime(df[date_col], errors="coerce")
+        
+        st.subheader("📅 Select Date Range")
+        
+        start_date, end_date = st.date_input(
+            "Filter by date:",
+            value=[df[date_col].min(), df[date_col].max()],
+            min_value=df[date_col].min(),
+            max_value=df[date_col].max()
+        )
+        
+        df = df[(df[date_col].dt.date >= start_date) & (df[date_col].dt.date <= end_date)]
 
         # ------------------ Tabs ------------------ #
         tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
