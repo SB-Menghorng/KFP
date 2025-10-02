@@ -1,11 +1,12 @@
-from datetime import date
 import json
+from datetime import date
 from typing import Dict, List, Optional
 
 import pandas as pd
 import requests
 import streamlit as st
 from streamlit_option_menu import option_menu
+from streamlit_tags import st_tags
 
 from databases.production_request_form import (
     GoogleSheetsClient,
@@ -70,7 +71,11 @@ class ProductionRequestForm:
                 # send text message
                 resp = requests.post(
                     f"{base_url}/sendMessage",
-                    data={"chat_id": chat_id, "text": message, "parse_mode": "Markdown"},
+                    data={
+                        "chat_id": chat_id,
+                        "text": message,
+                        "parse_mode": "Markdown",
+                    },
                 )
                 results[chat_id] = resp.status_code == 200
 
@@ -148,6 +153,35 @@ class ProductionRequestForm:
         df = self.load_data()
         questions = lambda x: self.get_form_question(df, x)
 
+        # --- Reactive cascading selects (outside form) ---
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            df_new = df.iloc[:, [6, 7, 8]].copy()
+            zoon = st.selectbox(
+                self.safe_label(questions(8), "Zoon *"),
+                self.get_list(df, 8),
+                key="zoon",
+            )
+
+        with col2:
+            filtered_buildings = df_new[df_new[questions(8)] == zoon][questions(7)].unique()
+            building = st.selectbox(
+                self.safe_label(questions(7), "Building *"),
+                sorted(filtered_buildings),
+                key="building",
+            )
+
+        with col3:
+            filtered_rooms = df_new[
+                (df_new[questions(8)] == zoon) & (df_new[questions(7)] == building)
+            ][questions(6)].unique()
+            room = st.selectbox(
+                self.safe_label(questions(6), "Room *"),
+                sorted(filtered_rooms),
+                key="room",
+            )
+
+        # --- Form starts here ---
         with st.form("production_request_form"):
             st.header(
                 self.safe_label(questions(11), "Production Request Form"),
@@ -157,9 +191,8 @@ class ProductionRequestForm:
             # --- User input ---
             col1, col2 = st.columns(2)
             with col1:
-                username = st.text_input(
-                    self.safe_label(questions(0)), placeholder="Sam Vanthorn"
-                )
+                options = self.get_list(df, 0)
+                username = st.selectbox(self.safe_label(questions(0)), options)
             with col2:
                 assigned_to = st.selectbox(
                     self.safe_label(questions(1), "Assign To"), self.get_list(df, 1)
@@ -210,24 +243,12 @@ class ProductionRequestForm:
                 unit = st.selectbox(
                     self.safe_label(questions(5), "Unit *"), self.get_list(df, 5)
                 )
+
             # --- New: User image upload ---
             image = st.file_uploader(
                 self.safe_label(questions(-1), "Upload Image"),
                 type=["png", "jpg", "jpeg"],
             )
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                room = st.selectbox(
-                    self.safe_label(questions(6), "Room *"), self.get_list(df, 6)
-                )
-            with col2:
-                building = st.selectbox(
-                    self.safe_label(questions(7), "Building *"), self.get_list(df, 7)
-                )
-            with col3:
-                zoon = st.selectbox(
-                    self.safe_label(questions(8), "Zoon *"), self.get_list(df, 8)
-                )
 
             contact = st.text_input(
                 self.safe_label(questions(9), "Contact *"),
@@ -250,9 +271,9 @@ class ProductionRequestForm:
                     description,
                     amount,
                     unit,
-                    room,
-                    building,
-                    zoon,
+                    room,       # from outside form
+                    building,   # from outside form
+                    zoon,       # from outside form
                     contact,
                     request_date,
                     to_date,
