@@ -22,11 +22,14 @@ def fetch_headers(sheet_id, sheet_name, ranges, value_0: bool = True):
     except Exception:
         # Silently fail and return empty list
         return []
-
+    
+@st.cache_data(ttl=3600)  # cache for 1 hour
+def get_google_client():
+    return GoogleSheetsClient()
 
 class ProductionRequestFormDB:
     def __init__(self, range_name: str, spreadsheet: str, sheet_name: str = "sheet1"):
-        self.google_client = GoogleSheetsClient()
+        self.google_client = get_google_client()
         # Extract spreadsheet ID from Streamlit secrets
         self.sheet_id = self.google_client.extract_spreadsheet_id(spreadsheet)
         self.spreadsheet = self.google_client.open_sheet(self.sheet_id)
