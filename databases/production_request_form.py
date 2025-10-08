@@ -1,6 +1,23 @@
 import pandas as pd
 import streamlit as st
+
 from utils.google_sheets_client import GoogleSheetsClient
+
+
+@st.cache_data(ttl=3600)  # cache for 1 hour
+def fetch_headers(google_client, sheet_id, sheet_name, ranges):
+    """Fetch headers from the first row of the sheet."""
+    try:
+        sheet_values = (
+            google_client.sheets_service.spreadsheets()
+            .values()
+            .get(spreadsheetId=sheet_id, range=f"{sheet_name}!{ranges}")
+            .execute()
+        )
+        return sheet_values.get("values", [[]])[0]
+    except Exception:
+        # Silently fail and return empty list
+        return []
 
 
 class ProductionRequestFormDB:
@@ -13,21 +30,9 @@ class ProductionRequestFormDB:
         # Optionally, get headers from the first row
         self.ranges = range_name
         self.sheet_name = sheet_name
-        self.headers = self._get_headers()
-
-    def _get_headers(self):
-        """Fetch headers from the first row of the sheet."""
-        try:
-            sheet_values = (
-                self.google_client.sheets_service.spreadsheets()
-                .values()
-                .get(spreadsheetId=self.sheet_id, range=f"{self.sheet_name}!{self.ranges}")  # First row
-                .execute()
-            )
-            return sheet_values.get("values", [[]])[0]
-        except Exception as e:
-            st.error(f"Failed to get headers: {e}")
-            return []
+        self.headers = fetch_headers(
+            self.google_client, self.sheet_id, self.sheet_name, self.ranges
+        )
 
     def append_row(self, data: dict, questions):
         """
@@ -64,7 +69,7 @@ class ProductionRequestFormDB:
                 .values()
                 .get(
                     spreadsheetId=self.sheet_id,
-                    range=f"{self.sheet_name}!{self.ranges}"
+                    range=f"{self.sheet_name}!{self.ranges}",
                 )
                 .execute()
             )
