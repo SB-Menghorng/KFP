@@ -65,17 +65,17 @@ class ProductionRequestFormDB:
         """
         try:
             # Fetch data from Google Sheets
-            result = (
-                self.google_client.sheets_service.spreadsheets()
-                .values()
-                .get(
-                    spreadsheetId=self.sheet_id,
-                    range=f"{self.sheet_name}!{self.ranges}",
-                )
-                .execute()
-            )
+            # result = (
+            #     self.google_client.sheets_service.spreadsheets()
+            #     .values()
+            #     .get(
+            #         spreadsheetId=self.sheet_id,
+            #         range=f"{self.sheet_name}!{self.ranges}",
+            #     )
+            #     .execute()
+            # )
 
-            values = result.get("values", [])
+            values = self.headers
 
             if not values:
                 # st.warning("No data found in the sheet.")
