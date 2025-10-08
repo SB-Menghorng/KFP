@@ -81,7 +81,7 @@ class ProductionDashboard:
     def load_data(self) -> pd.DataFrame:
         """Load data from Google Sheets safely."""
         try:
-            df = self.db.get_df()
+            df = load_production_request_data()
         except Exception as e:
             st.error(f"Failed to fetch data: {e}")
             return pd.DataFrame()
