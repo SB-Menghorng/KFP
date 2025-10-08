@@ -5,7 +5,7 @@ from utils.google_sheets_client import GoogleSheetsClient
 
 
 @st.cache_data(ttl=3600)  # cache for 1 hour
-def fetch_headers(sheet_id, sheet_name, ranges):
+def fetch_headers(sheet_id, sheet_name, ranges, value_0: bool = True):
     """Fetch headers from the first row of the sheet."""
     google_client = GoogleSheetsClient()
     try:
@@ -15,7 +15,10 @@ def fetch_headers(sheet_id, sheet_name, ranges):
             .get(spreadsheetId=sheet_id, range=f"{sheet_name}!{ranges}")
             .execute()
         )
-        return sheet_values.get("values", [[]])[0]
+        if value_0:
+            return sheet_values.get("values", [[]])[0]
+        else:
+            return sheet_values.get("values", [])
     except Exception:
         # Silently fail and return empty list
         return []
@@ -75,7 +78,7 @@ class ProductionRequestFormDB:
             #     .execute()
             # )
 
-            values = self.headers
+            values = fetch_headers(self.sheet_id, self.sheet_name, self.ranges, value_0=False)
 
             if not values:
                 # st.warning("No data found in the sheet.")
