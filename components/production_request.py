@@ -1,5 +1,5 @@
 import json
-from datetime import date
+from datetime import date, time
 from typing import Dict, List, Optional
 
 import pandas as pd
@@ -12,6 +12,16 @@ from databases.production_request_form import (
     GoogleSheetsClient,
     ProductionRequestFormDB,
 )
+
+
+@st.cache_data(show_spinner="Loading production request data...", ttl=600)
+def load_production_info_data():
+    db = ProductionRequestFormDB(
+        range_name="A:T",
+        spreadsheet=st.secrets["SPREADSHEET_PRODUCTION_REQUEST_FORM_READ"],
+    )
+    df = db.get_df()
+    return df
 
 
 class ProductionRequestForm:
@@ -116,6 +126,7 @@ class ProductionRequestForm:
         lines.append("")
         lines.append(f"📅 *{questions(13)}*: {data.get(questions(13), "-")}")
         lines.append(f"📅 *{questions(14)}*: {data.get(questions(14), '—')}")
+        lines.append(f"⏰ *{questions(19)}*: {data.get(questions(19), '—')}")
 
         return "\n".join(lines)
 
@@ -123,7 +134,7 @@ class ProductionRequestForm:
     def load_data(self) -> pd.DataFrame:
         """Load spreadsheet data safely."""
         try:
-            df = self.db_read.get_df()
+            df = load_production_info_data()
         except Exception as e:
             st.error(f"❌ Failed to read spreadsheet: {e}")
             st.stop()
@@ -164,7 +175,9 @@ class ProductionRequestForm:
             )
 
         with col2:
-            filtered_buildings = df_new[df_new[questions(8)] == zoon][questions(7)].unique()
+            filtered_buildings = df_new[df_new[questions(8)] == zoon][
+                questions(7)
+            ].unique()
             building = st.selectbox(
                 self.safe_label(questions(7), "Building *"),
                 sorted(filtered_buildings),
@@ -198,7 +211,7 @@ class ProductionRequestForm:
                     self.safe_label(questions(1), "Assign To"), self.get_list(df, 1)
                 )
 
-            col1, col2 = st.columns(2)
+            col1, col2, col3 = st.columns([2, 2, 1])
             with col1:
                 request_date = st.date_input(
                     self.safe_label(questions(13), "Request Date *"), value=date.today()
@@ -207,7 +220,10 @@ class ProductionRequestForm:
                 to_date = st.date_input(
                     self.safe_label(questions(14), "To Date *"), value=date.today()
                 )
-
+            with col3:
+                time_to = st.time_input(
+                    self.safe_label(questions(19), "Repair Time"), value=time(8, 0)
+                )
             selected_topic = option_menu(
                 menu_title=self.safe_label(questions(2), "Topic *"),
                 options=self.get_list(df, 2)[:-1],
@@ -271,12 +287,13 @@ class ProductionRequestForm:
                     description,
                     amount,
                     unit,
-                    room,       # from outside form
-                    building,   # from outside form
-                    zoon,       # from outside form
+                    room,  # from outside form
+                    building,  # from outside form
+                    zoon,  # from outside form
                     contact,
                     request_date,
                     to_date,
+                    time_to,
                     image,
                 )
 
@@ -297,6 +314,7 @@ class ProductionRequestForm:
         contact,
         request_date: date,
         to_date: date,
+        time_to: time,
         image=None,
     ):
         # --- Validate inputs ---
@@ -323,7 +341,8 @@ class ProductionRequestForm:
             errors.append("Zoon is required.")
         if not contact.strip():
             errors.append("Contact information is required.")
-
+        if not time_to:
+            errors.append("To Tim is required")
         if errors:
             for err in errors:
                 st.error(f"⚠️ {err}")
@@ -349,6 +368,9 @@ class ProductionRequestForm:
             ),
             f"{self.safe_label(questions(14), 'To Date')}": to_date.strftime(
                 "%Y-%m-%d"
+            ),
+            f"{self.safe_label(questions(19), 'To Time')}": time_to.strftime(
+                "%I:%M %p"
             ),
             "Image": image,
         }

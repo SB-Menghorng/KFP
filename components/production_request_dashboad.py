@@ -10,6 +10,55 @@ prod_form = ProductionRequestForm()
 get_form_questions = prod_form.get_form_question
 
 
+@st.cache_data(show_spinner="Loading production request data...", ttl=600)
+def load_production_request_data():
+    db = ProductionRequestFormDB(
+        range_name="A:P",
+        spreadsheet=st.secrets["SPREADSHEET_PRODUCTION_REQUEST_FORM_STORED"],
+    )
+    df = db.get_df()
+    return df
+
+@st.cache_data(show_spinner="Loading production request data...", ttl=600)
+def load_production_info_data():
+    db = ProductionRequestFormDB(
+            range_name="A:P",
+            spreadsheet=st.secrets["SPREADSHEET_PRODUCTION_REQUEST_FORM_READ"],
+            sheet_name="dashboard",
+        )
+    df = db.get_df()
+    return df
+
+def normalize_dates(df, date_col):
+    # Convert all to string first (to avoid weird mixed-type issues)
+    df[date_col] = df[date_col].astype(str).str.strip()
+
+    # Detect Excel-style numbers (like "45938")
+    is_numeric = df[date_col].str.match(r"^\d+(\.\d+)?$")
+
+    # Split numeric vs text for safe conversion
+    numeric_part = df.loc[is_numeric, date_col].astype(float)
+    text_part = df.loc[~is_numeric, date_col]
+
+    # Convert numeric (Excel serial) to datetime
+    converted_numeric = pd.to_datetime("1899-12-30") + pd.to_timedelta(
+        numeric_part, unit="D"
+    )
+
+    # Convert text (normal date strings) to datetime
+    converted_text = pd.to_datetime(text_part, errors="coerce")
+
+    # Combine both back into one column
+    df.loc[is_numeric, date_col] = converted_numeric
+    df.loc[~is_numeric, date_col] = converted_text
+
+    # Final cleanup
+    df[date_col] = pd.to_datetime(df[date_col], errors="coerce")
+    df = df.dropna(subset=[date_col])
+
+    return df
+
+
 class ProductionDashboard:
     """Class to handle production request dashboard visualizations."""
 
@@ -23,10 +72,10 @@ class ProductionDashboard:
             spreadsheet=st.secrets["SPREADSHEET_PRODUCTION_REQUEST_FORM_READ"],
             sheet_name="dashboard",
         )
-        self.df = self.load_data()
+        self.df = load_production_request_data()
 
     def title(self, x):
-        df = self.db_read.get_df()
+        df = load_production_info_data()
         return df.iloc[x, 0]
 
     def load_data(self) -> pd.DataFrame:
@@ -61,8 +110,8 @@ class ProductionDashboard:
 
         total_requests = df.shape[0]
         unique_users = df[name_col].nunique()
-        
-        df[date_col] = pd.to_datetime(df[date_col], errors="coerce")
+
+        df = normalize_dates(df, date_col)
 
         try:
             busiest_date = df[date_col].value_counts().idxmax().strftime("%Y-%m-%d")
@@ -74,7 +123,6 @@ class ProductionDashboard:
         col2.metric(title(1), unique_users)
         col3.metric(title(2), busiest_date)
         st.divider()
-
 
     def render_charts(self):
         """Render charts for requests with multiple analysis views."""
@@ -91,23 +139,32 @@ class ProductionDashboard:
         date_col = get_form_questions(df, 14)
 
         # Ensure datetime
-        df[date_col] = pd.to_datetime(df[date_col], errors="coerce")
-        
+        # df = normalize_dates(df, date_col)
+
         st.subheader("📅 Select Date Range")
-        
+
         start_date, end_date = st.date_input(
             "Filter by date:",
             value=[df[date_col].min(), df[date_col].max()],
             min_value=df[date_col].min(),
-            max_value=df[date_col].max()
+            max_value=df[date_col].max(),
         )
-        
-        df = df[(df[date_col].dt.date >= start_date) & (df[date_col].dt.date <= end_date)]
+
+        df = df[
+            (df[date_col].dt.date >= start_date) & (df[date_col].dt.date <= end_date)
+        ]
 
         # ------------------ Tabs ------------------ #
-        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-            "Overview", "By Type", "Room/Building/Zone", "Trends", "Heatmap", "Retention"
-        ])
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
+            [
+                "Overview",
+                "By Type",
+                "Room/Building/Zone",
+                "Trends",
+                "Heatmap",
+                "Retention",
+            ]
+        )
 
         # ------------------ Overview ------------------ #
         with tab1:
@@ -121,7 +178,9 @@ class ProductionDashboard:
 
             with col2:
                 st.subheader("📅 Requests by Date")
-                date_counts = df[date_col].value_counts().sort_index().reset_index(name="Date")
+                date_counts = (
+                    df[date_col].value_counts().sort_index().reset_index(name="Date")
+                )
                 st.bar_chart(date_counts.set_index("Date"))
                 if st.checkbox("Show date data", key="date"):
                     st.dataframe(date_counts)
@@ -152,15 +211,21 @@ class ProductionDashboard:
 
             if group_choice == "Room":
                 df_group = df.groupby(room_col).size().reset_index(name="Count")
-                fig_group = px.bar(df_group, x=room_col, y="Count", title="Requests by Room")
+                fig_group = px.bar(
+                    df_group, x=room_col, y="Count", title="Requests by Room"
+                )
 
             elif group_choice == "Building":
                 df_group = df.groupby(building_col).size().reset_index(name="Count")
-                fig_group = px.bar(df_group, x=building_col, y="Count", title="Requests by Building")
+                fig_group = px.bar(
+                    df_group, x=building_col, y="Count", title="Requests by Building"
+                )
 
             elif group_choice == "Zone":
                 df_group = df.groupby(zone_col).size().reset_index(name="Count")
-                fig_group = px.bar(df_group, x=zone_col, y="Count", title="Requests by Zone")
+                fig_group = px.bar(
+                    df_group, x=zone_col, y="Count", title="Requests by Zone"
+                )
 
             else:  # All Available
                 df_group = (
@@ -186,20 +251,29 @@ class ProductionDashboard:
         with tab4:
             st.subheader("📆 Requests Over Time")
             df_time = df.groupby(date_col).size().reset_index(name="Count")
-            fig_time = px.line(df_time, x=date_col, y="Count", markers=True, title="Requests Over Time")
+            fig_time = px.line(
+                df_time, x=date_col, y="Count", markers=True, title="Requests Over Time"
+            )
             st.plotly_chart(fig_time, use_container_width=True)
 
             # Cumulative
             df_time["Cumulative"] = df_time["Count"].cumsum()
-            fig_cum = px.line(df_time, x=date_col, y="Cumulative", title="Cumulative Requests Over Time")
+            fig_cum = px.line(
+                df_time,
+                x=date_col,
+                y="Cumulative",
+                title="Cumulative Requests Over Time",
+            )
             st.plotly_chart(fig_cum, use_container_width=True)
 
             # Moving average
             df_time["7d_avg"] = df_time["Count"].rolling(7, min_periods=1).mean()
             fig_trend = px.line(
-                df_time, x=date_col, y=["Count", "7d_avg"],
+                df_time,
+                x=date_col,
+                y=["Count", "7d_avg"],
                 labels={"value": "Requests", "variable": "Metric"},
-                title="Requests with 7-day Moving Average"
+                title="Requests with 7-day Moving Average",
             )
             st.plotly_chart(fig_trend, use_container_width=True)
 
@@ -212,10 +286,17 @@ class ProductionDashboard:
             if pd.api.types.is_datetime64_any_dtype(df[date_col]):
                 df["weekday"] = df[date_col].dt.day_name()
                 df["hour"] = df[date_col].dt.hour
-                heatmap = df.groupby(["weekday", "hour"]).size().reset_index(name="Count")
+                heatmap = (
+                    df.groupby(["weekday", "hour"]).size().reset_index(name="Count")
+                )
                 fig_heatmap = px.density_heatmap(
-                    heatmap, x="hour", y="weekday", z="Count",
-                    title="Requests by Day of Week & Hour", nbinsx=24, color_continuous_scale="Viridis"
+                    heatmap,
+                    x="hour",
+                    y="weekday",
+                    z="Count",
+                    title="Requests by Day of Week & Hour",
+                    nbinsx=24,
+                    color_continuous_scale="Viridis",
                 )
                 st.plotly_chart(fig_heatmap, use_container_width=True)
                 if st.checkbox("Show heatmap data"):
@@ -233,7 +314,7 @@ class ProductionDashboard:
             fig_ret = px.pie(
                 names=["One-time", "Repeat"],
                 values=[one_time, repeat],
-                title="User Retention"
+                title="User Retention",
             )
             st.plotly_chart(fig_ret, use_container_width=True)
 
@@ -245,9 +326,9 @@ class ProductionDashboard:
 
         with st.expander("🔍 Explore Data"):
             view_option = st.radio(
-                "Choose view:", 
-                ["Preview", "Full Data", "Column Overview"], 
-                horizontal=True
+                "Choose view:",
+                ["Preview", "Full Data", "Column Overview"],
+                horizontal=True,
             )
 
             if view_option == "Preview":
@@ -258,11 +339,17 @@ class ProductionDashboard:
                 st.dataframe(self.df, use_container_width=True)
 
             elif view_option == "Column Overview":
-                st.table(pd.DataFrame({
-                    "Column Name": self.df.columns,
-                    "Data Type": [str(dtype) for dtype in self.df.dtypes],
-                    "Non-Null Count": [self.df[col].notnull().sum() for col in self.df.columns],
-                }))
+                st.table(
+                    pd.DataFrame(
+                        {
+                            "Column Name": self.df.columns,
+                            "Data Type": [str(dtype) for dtype in self.df.dtypes],
+                            "Non-Null Count": [
+                                self.df[col].notnull().sum() for col in self.df.columns
+                            ],
+                        }
+                    )
+                )
 
     def render_dashboard(self):
         """Render full dashboard with metrics, charts, and data table."""
