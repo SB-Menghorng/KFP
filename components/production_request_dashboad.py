@@ -10,7 +10,7 @@ prod_form = ProductionRequestForm()
 get_form_questions = prod_form.get_form_question
 
 
-@st.cache_data(show_spinner="Loading production request data...", ttl=600)
+@st.cache_data(show_spinner="Loading production request data...", ttl=3600)
 def load_production_request_data():
     db = ProductionRequestFormDB(
         range_name="A:P",
@@ -19,7 +19,7 @@ def load_production_request_data():
     df = db.get_df()
     return df
 
-@st.cache_data(show_spinner="Loading production request data...", ttl=600)
+@st.cache_data(show_spinner="Loading production request data...", ttl=3600)
 def load_production_info_data():
     db = ProductionRequestFormDB(
             range_name="A:P",

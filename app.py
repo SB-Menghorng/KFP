@@ -1,16 +1,14 @@
 import streamlit as st
 from streamlit_option_menu import option_menu
 
-from components.production_request import ProductionRequestForm, ProductionRequestFormDB
+from components.production_request import ProductionRequestForm, ProductionRequestFormDB, load_production_info_data
 from components.production_request_dashboad import ProductionDashboard
 
 # ------------------ Initialize ------------------ #
 prod_form = ProductionRequestForm()
 prod_dashboard = ProductionDashboard()
-prod_db = ProductionRequestFormDB(
-    range_name="R:X", spreadsheet=st.secrets["SPREADSHEET_PRODUCTION_REQUEST_FORM_READ"]
-)
-df = prod_db.get_df()
+
+df = load_production_info_data()
 title = lambda x: df.iloc[x, 0]
 logo = lambda x: df.iloc[x, 1]
 st.set_page_config(
