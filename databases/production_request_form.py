@@ -5,8 +5,9 @@ from utils.google_sheets_client import GoogleSheetsClient
 
 
 @st.cache_data(ttl=3600)  # cache for 1 hour
-def fetch_headers(google_client, sheet_id, sheet_name, ranges):
+def fetch_headers(sheet_id, sheet_name, ranges):
     """Fetch headers from the first row of the sheet."""
+    google_client = GoogleSheetsClient()
     try:
         sheet_values = (
             google_client.sheets_service.spreadsheets()
@@ -31,7 +32,7 @@ class ProductionRequestFormDB:
         self.ranges = range_name
         self.sheet_name = sheet_name
         self.headers = fetch_headers(
-            self.google_client, self.sheet_id, self.sheet_name, self.ranges
+            self.sheet_id, self.sheet_name, self.ranges
         )
 
     def append_row(self, data: dict, questions):
