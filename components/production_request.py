@@ -375,7 +375,7 @@ class ProductionRequestForm:
         }
 
         # --- Append to Google Sheet ---
-        st.json(data)
+        # st.json(data)
         try:
             write_response = self.db_stored.append_row(
                 data, lambda x: self.safe_label(questions(x))
@@ -389,4 +389,4 @@ class ProductionRequestForm:
             lambda x: self.safe_label(questions(x)), data
         )
         file_id = self.send_telegram_message(image, chat_ids, message)
-        st.info(f"file id: {file_id}")
+        # st.info(f"file id: {file_id}")
